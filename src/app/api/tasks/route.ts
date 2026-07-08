@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const q = searchParams.get('q')
 
-  const tasks = q ? searchTasks(q) : getAllTasks()
+  const tasks = q ? await searchTasks(q) : await getAllTasks()
   return NextResponse.json(tasks)
 }
 
@@ -17,6 +17,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 })
   }
 
-  const task = createTask(body)
+  const task = await createTask(body)
   return NextResponse.json(task, { status: 201 })
 }

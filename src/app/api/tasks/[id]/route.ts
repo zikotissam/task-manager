@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const task = getTaskById(Number(id))
+  const task = await getTaskById(Number(id))
   if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
   return NextResponse.json(task)
 }
@@ -18,7 +18,7 @@ export async function PATCH(
 ) {
   const { id } = await params
   const body: UpdateTaskInput = await request.json()
-  const task = updateTask(Number(id), body)
+  const task = await updateTask(Number(id), body)
   if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
   return NextResponse.json(task)
 }
@@ -28,7 +28,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const deleted = deleteTask(Number(id))
+  const deleted = await deleteTask(Number(id))
   if (!deleted) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
   return NextResponse.json({ success: true })
 }
