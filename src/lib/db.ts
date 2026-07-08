@@ -3,6 +3,15 @@ import path from 'path'
 import fs from 'fs'
 import type { Task, CreateTaskInput, UpdateTaskInput } from '@/types'
 
+export interface User {
+  id: number
+  name: string
+  email: string
+  password_hash: string | null
+  image: string | null
+  created_at: string
+}
+
 const url = process.env.TURSO_DB_URL ?? 'file:data/tasks.db'
 const authToken = process.env.TURSO_AUTH_TOKEN
 
@@ -21,24 +30,67 @@ async function getClient() {
     }
 
     await client.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT,
+        image TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+
+    await client.execute(`
       CREATE TABLE IF NOT EXISTS tasks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
         title TEXT NOT NULL,
         description TEXT,
         priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high')),
         due_date TEXT,
         completed INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id)
       )
     `)
+
+    try {
+      await client.execute("ALTER TABLE tasks ADD COLUMN user_id INTEGER REFERENCES users(id)")
+    } catch {
+      // column already exists — ignore
+    }
   }
   return client
 }
 
-export async function getAllTasks(): Promise<Task[]> {
+export async function getUserByEmail(email: string): Promise<User | undefined> {
   const c = await getClient()
-  const rs = await c.execute('SELECT * FROM tasks ORDER BY created_at DESC')
+  const rs = await c.execute({ sql: 'SELECT * FROM users WHERE email = ?', args: [email] })
+  return rs.rows[0] as unknown as User | undefined
+}
+
+export async function getUserById(id: number): Promise<User | undefined> {
+  const c = await getClient()
+  const rs = await c.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [id] })
+  return rs.rows[0] as unknown as User | undefined
+}
+
+export async function createUser(name: string, email: string, password_hash: string): Promise<User> {
+  const c = await getClient()
+  const rs = await c.execute({
+    sql: 'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)',
+    args: [name, email, password_hash],
+  })
+  return getUserById(Number(rs.lastInsertRowid)) as Promise<User>
+}
+
+export async function getAllTasks(userId: number): Promise<Task[]> {
+  const c = await getClient()
+  const rs = await c.execute({
+    sql: 'SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC',
+    args: [userId],
+  })
   return rs.rows as unknown as Task[]
 }
 
@@ -48,11 +100,11 @@ export async function getTaskById(id: number): Promise<Task | undefined> {
   return rs.rows[0] as unknown as Task | undefined
 }
 
-export async function createTask(input: CreateTaskInput): Promise<Task> {
+export async function createTask(input: CreateTaskInput, userId: number): Promise<Task> {
   const c = await getClient()
   const rs = await c.execute({
-    sql: 'INSERT INTO tasks (title, description, priority, due_date) VALUES (?, ?, ?, ?)',
-    args: [input.title, input.description ?? null, input.priority ?? 'medium', input.due_date ?? null],
+    sql: 'INSERT INTO tasks (user_id, title, description, priority, due_date) VALUES (?, ?, ?, ?, ?)',
+    args: [userId, input.title, input.description ?? null, input.priority ?? 'medium', input.due_date ?? null],
   })
   return getTaskById(Number(rs.lastInsertRowid)) as Promise<Task>
 }
@@ -86,11 +138,11 @@ export async function deleteTask(id: number): Promise<boolean> {
   return rs.rowsAffected > 0
 }
 
-export async function searchTasks(query: string): Promise<Task[]> {
+export async function searchTasks(query: string, userId: number): Promise<Task[]> {
   const c = await getClient()
   const rs = await c.execute({
-    sql: "SELECT * FROM tasks WHERE title LIKE ? ORDER BY created_at DESC",
-    args: [`%${query}%`],
+    sql: "SELECT * FROM tasks WHERE user_id = ? AND title LIKE ? ORDER BY created_at DESC",
+    args: [userId, `%${query}%`],
   })
   return rs.rows as unknown as Task[]
 }

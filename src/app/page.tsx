@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSession, signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import type { Task, Priority } from '@/types'
 import AddTaskForm from '@/components/AddTaskForm'
 import TaskList from '@/components/TaskList'
@@ -10,11 +12,19 @@ import ThemeToggle from '@/components/ThemeToggle'
 type Filter = 'all' | 'active' | 'completed'
 
 export default function Home() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>([])
   const [filter, setFilter] = useState<Filter>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login')
+    }
+  }, [status, router])
 
   const fetchTasks = useCallback(async (query?: string) => {
     setError(null)
@@ -29,15 +39,18 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    fetchTasks().then(() => setLoading(false))
-  }, [fetchTasks])
+    if (status === 'authenticated') {
+      fetchTasks().then(() => setLoading(false))
+    }
+  }, [status, fetchTasks])
 
   useEffect(() => {
+    if (status !== 'authenticated') return
     const timer = setTimeout(() => {
       fetchTasks(searchQuery || undefined)
     }, 300)
     return () => clearTimeout(timer)
-  }, [searchQuery, fetchTasks])
+  }, [searchQuery, fetchTasks, status])
 
   const handleAdd = async (title: string, description: string, priority: Priority, due_date: string) => {
     try {
@@ -85,17 +98,38 @@ export default function Home() {
     { key: 'completed', label: 'Completed' },
   ]
 
+  if (status === 'loading' || status === 'unauthenticated') {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-blue-500 dark:border-zinc-700 dark:border-t-blue-400" />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/80">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-            Tasks
-            <span className="ml-2 text-sm font-normal text-zinc-400 dark:text-zinc-500">
-              {tasks.length} total
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+              Tasks
+              <span className="ml-2 text-sm font-normal text-zinc-400 dark:text-zinc-500">
+                {tasks.length} total
+              </span>
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-sm text-zinc-500 dark:text-zinc-400 sm:inline">
+              {session?.user?.name}
             </span>
-          </h1>
-          <ThemeToggle />
+            <button
+              onClick={() => signOut()}
+              className="text-sm text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+            >
+              Sign out
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

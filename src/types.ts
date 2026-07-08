@@ -2,6 +2,7 @@ export type Priority = 'low' | 'medium' | 'high'
 
 export interface Task {
   id: number
+  user_id: number
   title: string
   description: string | null
   priority: Priority
