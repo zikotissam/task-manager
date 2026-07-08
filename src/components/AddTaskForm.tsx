@@ -31,6 +31,8 @@ export default function AddTaskForm({ onAdd }: Props) {
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+          aria-label={isExpanded ? 'Collapse form' : 'Expand form'}
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-dashed transition-all duration-200 ${
             isExpanded
               ? 'border-blue-400 bg-blue-50 text-blue-500 dark:border-blue-500 dark:bg-blue-900/30 dark:text-blue-400'

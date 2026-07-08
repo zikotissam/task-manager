@@ -2,7 +2,7 @@ import NextAuth from "next-auth"
 import GitHub from "next-auth/providers/github"
 import Credentials from "next-auth/providers/credentials"
 import { compare } from "bcryptjs"
-import { getUserByEmail } from "./db"
+import { getUserByEmail, createUser } from "./db"
 import type { Session } from "next-auth"
 
 declare module "next-auth" {
@@ -39,8 +39,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.id = user.id
+    async jwt({ token, user, account }) {
+      if (account && user?.email) {
+        let localUser = await getUserByEmail(user.email)
+        if (!localUser) {
+          localUser = await createUser(user.name ?? "", user.email, "")
+        }
+        token.id = String(localUser.id)
+      } else if (user) {
+        token.id = user.id
+      }
       return token
     },
     async session({ session, token }) {

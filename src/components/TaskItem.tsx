@@ -1,20 +1,21 @@
 'use client'
 
-import type { Task } from '@/types'
+import type { Task, Priority } from '@/types'
 
 interface Props {
   task: Task
   onToggle: (id: number, completed: number) => void
   onDelete: (id: number) => void
+  disabled?: boolean
 }
 
-const priorityColors: Record<string, string> = {
+const priorityColors: Record<Priority, string> = {
   low: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
   high: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 }
 
-export default function TaskItem({ task, onToggle, onDelete }: Props) {
+export default function TaskItem({ task, onToggle, onDelete, disabled }: Props) {
   return (
     <div
       className={`group flex items-start gap-3 rounded-lg border p-4 transition-all duration-200 hover:shadow-md ${
@@ -25,7 +26,8 @@ export default function TaskItem({ task, onToggle, onDelete }: Props) {
     >
       <button
         onClick={() => onToggle(task.id, task.completed)}
-        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
+        disabled={disabled}
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
           task.completed
             ? 'border-green-500 bg-green-500 dark:border-green-400 dark:bg-green-400'
             : 'border-zinc-300 hover:border-green-400 dark:border-zinc-600 dark:hover:border-green-500'
@@ -71,7 +73,8 @@ export default function TaskItem({ task, onToggle, onDelete }: Props) {
 
       <button
         onClick={() => onDelete(task.id)}
-        className="shrink-0 rounded p-1 text-zinc-400 opacity-0 transition-all duration-200 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+        disabled={disabled}
+        className="shrink-0 rounded p-1 text-zinc-400 opacity-60 transition-all duration-200 hover:bg-red-50 hover:text-red-500 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-30 sm:opacity-0 sm:group-hover:opacity-100 dark:hover:bg-red-900/30 dark:hover:text-red-400"
         aria-label="Delete task"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

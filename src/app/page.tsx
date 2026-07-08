@@ -19,6 +19,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pendingId, setPendingId] = useState<number | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -68,6 +69,7 @@ export default function Home() {
   }
 
   const handleToggle = async (id: number, completed: number) => {
+    setPendingId(id)
     try {
       const res = await fetch(`/api/tasks/${id}`, {
         method: 'PATCH',
@@ -79,16 +81,21 @@ export default function Home() {
       setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update task')
+    } finally {
+      setPendingId(null)
     }
   }
 
   const handleDelete = async (id: number) => {
+    setPendingId(id)
     try {
       const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete task')
       setTasks((prev) => prev.filter((t) => t.id !== id))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete task')
+    } finally {
+      setPendingId(null)
     }
   }
 
@@ -150,11 +157,13 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
+          <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800" role="tablist">
             {filters.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
+                role="tab"
+                aria-selected={filter === key}
                 className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                   filter === key
                     ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
@@ -177,6 +186,7 @@ export default function Home() {
               onToggle={handleToggle}
               onDelete={handleDelete}
               searchQuery={searchQuery}
+              disabled={pendingId !== null}
             />
           )}
         </div>

@@ -1,15 +1,31 @@
 import { createClient } from '@libsql/client'
 import path from 'path'
 import fs from 'fs'
-import type { Task, CreateTaskInput, UpdateTaskInput } from '@/types'
+import type { Task, User, Priority, CreateTaskInput, UpdateTaskInput } from '@/types'
 
-export interface User {
-  id: number
-  name: string
-  email: string
-  password_hash: string | null
-  image: string | null
-  created_at: string
+function mapUser(row: Record<string, unknown>): User {
+  return {
+    id: row.id as number,
+    name: row.name as string,
+    email: row.email as string,
+    password_hash: row.password_hash as string | null,
+    image: row.image as string | null,
+    created_at: row.created_at as string,
+  }
+}
+
+function mapTask(row: Record<string, unknown>): Task {
+  return {
+    id: row.id as number,
+    user_id: row.user_id as number,
+    title: row.title as string,
+    description: row.description as string | null,
+    priority: row.priority as Priority,
+    due_date: row.due_date as string | null,
+    completed: row.completed as number,
+    created_at: row.created_at as string,
+    updated_at: row.updated_at as string,
+  }
 }
 
 const url = process.env.TURSO_DB_URL ?? 'file:data/tasks.db'
@@ -54,12 +70,6 @@ async function getClient() {
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
     `)
-
-    try {
-      await client.execute("ALTER TABLE tasks ADD COLUMN user_id INTEGER REFERENCES users(id)")
-    } catch {
-      // column already exists — ignore
-    }
   }
   return client
 }
@@ -67,13 +77,15 @@ async function getClient() {
 export async function getUserByEmail(email: string): Promise<User | undefined> {
   const c = await getClient()
   const rs = await c.execute({ sql: 'SELECT * FROM users WHERE email = ?', args: [email] })
-  return rs.rows[0] as unknown as User | undefined
+  const row = rs.rows[0]
+  return row ? mapUser(row as Record<string, unknown>) : undefined
 }
 
 export async function getUserById(id: number): Promise<User | undefined> {
   const c = await getClient()
   const rs = await c.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [id] })
-  return rs.rows[0] as unknown as User | undefined
+  const row = rs.rows[0]
+  return row ? mapUser(row as Record<string, unknown>) : undefined
 }
 
 export async function createUser(name: string, email: string, password_hash: string): Promise<User> {
@@ -91,13 +103,14 @@ export async function getAllTasks(userId: number): Promise<Task[]> {
     sql: 'SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC',
     args: [userId],
   })
-  return rs.rows as unknown as Task[]
+  return (rs.rows as Record<string, unknown>[]).map(mapTask)
 }
 
 export async function getTaskById(id: number): Promise<Task | undefined> {
   const c = await getClient()
   const rs = await c.execute({ sql: 'SELECT * FROM tasks WHERE id = ?', args: [id] })
-  return rs.rows[0] as unknown as Task | undefined
+  const row = rs.rows[0]
+  return row ? mapTask(row as Record<string, unknown>) : undefined
 }
 
 export async function createTask(input: CreateTaskInput, userId: number): Promise<Task> {
@@ -144,5 +157,5 @@ export async function searchTasks(query: string, userId: number): Promise<Task[]
     sql: "SELECT * FROM tasks WHERE user_id = ? AND title LIKE ? ORDER BY created_at DESC",
     args: [userId, `%${query}%`],
   })
-  return rs.rows as unknown as Task[]
+  return (rs.rows as Record<string, unknown>[]).map(mapTask)
 }

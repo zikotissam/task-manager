@@ -9,13 +9,13 @@ interface Props {
   onToggle: (id: number, completed: number) => void
   onDelete: (id: number) => void
   searchQuery: string
+  disabled?: boolean
 }
 
-export default function TaskList({ tasks, filter, onToggle, onDelete, searchQuery }: Props) {
+export default function TaskList({ tasks, filter, onToggle, onDelete, searchQuery, disabled }: Props) {
   const filtered = tasks.filter((task) => {
     if (filter === 'active' && task.completed) return false
     if (filter === 'completed' && !task.completed) return false
-    if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
 
@@ -41,7 +41,7 @@ export default function TaskList({ tasks, filter, onToggle, onDelete, searchQuer
   return (
     <div className="space-y-2">
       {filtered.map((task) => (
-        <TaskItem key={task.id} task={task} onToggle={onToggle} onDelete={onDelete} />
+        <TaskItem key={task.id} task={task} onToggle={onToggle} onDelete={onDelete} disabled={disabled} />
       ))}
     </div>
   )

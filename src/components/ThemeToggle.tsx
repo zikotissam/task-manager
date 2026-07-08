@@ -16,7 +16,7 @@ export default function ThemeToggle() {
           theme === 'dark' ? 'translate-x-6' : 'translate-x-0'
         }`}
       >
-        <span className="flex h-full items-center justify-center text-sm">
+        <span className="flex h-full items-center justify-center text-sm" aria-hidden="true">
           {theme === 'dark' ? '🌙' : '☀️'}
         </span>
       </span>
