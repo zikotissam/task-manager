@@ -3,7 +3,6 @@ import GitHub from "next-auth/providers/github"
 import Credentials from "next-auth/providers/credentials"
 import { compare } from "bcryptjs"
 import { getUserByEmail, createUser } from "./db"
-import type { Session } from "next-auth"
 
 declare module "next-auth" {
   interface Session {

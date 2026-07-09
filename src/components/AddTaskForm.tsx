@@ -5,9 +5,10 @@ import type { Priority } from '@/types'
 
 interface Props {
   onAdd: (title: string, description: string, priority: Priority, due_date: string) => void
+  inputRef?: React.RefObject<HTMLInputElement | null>
 }
 
-export default function AddTaskForm({ onAdd }: Props) {
+export default function AddTaskForm({ onAdd, inputRef }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
@@ -44,6 +45,7 @@ export default function AddTaskForm({ onAdd }: Props) {
           </svg>
         </button>
         <input
+          ref={inputRef}
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
