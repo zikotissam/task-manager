@@ -24,6 +24,15 @@
 .DS_Store
 *.pem
 
+# project config (not shared outside)
+.opencode/
+AGENTS.md
+EXPLANATION.md
+AgenticAI.md
+
+# logs
+*.log
+
 # debug
 npm-debug.log*
 yarn-debug.log*
