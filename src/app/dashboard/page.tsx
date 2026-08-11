@@ -10,7 +10,6 @@ function computeStats(tasks: Task[]) {
   const completed = tasks.filter((t) => t.completed).length
   const active = total - completed
   const now = new Date()
-  now.setHours(0, 0, 0, 0)
   const overdue = tasks.filter((t) => !t.completed && t.due_date && new Date(t.due_date) < now).length
   const low = tasks.filter((t) => t.priority === 'low').length
   const medium = tasks.filter((t) => t.priority === 'medium').length

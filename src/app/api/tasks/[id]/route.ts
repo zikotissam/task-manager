@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getTaskById, updateTask, deleteTask } from '@/lib/db'
-import type { UpdateTaskInput } from '@/types'
+import { STATUSES } from '@/types'
+import type { UpdateTaskInput, Status } from '@/types'
 
 export async function GET(
   _request: NextRequest,
@@ -44,6 +45,9 @@ export async function PATCH(
     }
 
     const body: UpdateTaskInput = await request.json()
+    if (body.status !== undefined && !STATUSES.includes(body.status as Status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
     const updated = await updateTask(Number(id), body)
     return NextResponse.json(updated)
   } catch (e) {

@@ -1,6 +1,6 @@
 'use client'
 
-import type { Task, Priority, UpdateTaskInput } from '@/types'
+import type { Task, Priority, Status, UpdateTaskInput } from '@/types'
 import TaskItem from './TaskItem'
 
 type SortBy = 'created_desc' | 'created_asc' | 'due_date' | 'priority_high'
@@ -8,6 +8,7 @@ type SortBy = 'created_desc' | 'created_asc' | 'due_date' | 'priority_high'
 interface Props {
   tasks: Task[]
   filter: 'all' | 'active' | 'completed'
+  statusFilter: 'all' | Status
   priorityFilter: 'all' | Priority
   sortBy: SortBy
   onToggle: (id: number, completed: number) => void
@@ -19,10 +20,11 @@ interface Props {
 
 const priorityRank: Record<Priority, number> = { high: 3, medium: 2, low: 1 }
 
-export default function TaskList({ tasks, filter, priorityFilter, sortBy, onToggle, onDelete, onEdit, searchQuery, disabled }: Props) {
+export default function TaskList({ tasks, filter, statusFilter, priorityFilter, sortBy, onToggle, onDelete, onEdit, searchQuery, disabled }: Props) {
   const filtered = tasks.filter((task) => {
-    if (filter === 'active' && task.completed) return false
-    if (filter === 'completed' && !task.completed) return false
+    if (filter === 'active' && task.status === 'done') return false
+    if (filter === 'completed' && task.status !== 'done') return false
+    if (statusFilter !== 'all' && task.status !== statusFilter) return false
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false
     return true
   })

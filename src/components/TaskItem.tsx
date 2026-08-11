@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import type { Task, Priority, UpdateTaskInput } from '@/types'
+import type { Task, Priority, Status, UpdateTaskInput } from '@/types'
+import DueBadge from './DueBadge'
+import { normalizeDatetimeLocal, parseDueDate, toDatetimeLocal } from '@/lib/dates'
 
 interface Props {
   task: Task
@@ -17,18 +19,33 @@ const priorityColors: Record<Priority, string> = {
   high: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 }
 
+const statusAccents: Record<Status, string> = {
+  pending: 'bg-zinc-300 dark:bg-zinc-600',
+  in_progress: 'bg-blue-500',
+  stopped: 'bg-amber-500',
+  done: 'bg-green-500',
+}
+
+const statusLabels: Record<Status, string> = {
+  pending: 'Pending',
+  in_progress: 'In progress',
+  stopped: 'Stopped',
+  done: 'Done',
+}
+
 export default function TaskItem({ task, onToggle, onDelete, onEdit, disabled }: Props) {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
   const [editDescription, setEditDescription] = useState(task.description ?? '')
   const [editPriority, setEditPriority] = useState(task.priority)
-  const [editDueDate, setEditDueDate] = useState(task.due_date ?? '')
+  const [editDueDate, setEditDueDate] = useState(() => toDatetimeLocal(task.due_date, task.created_at))
+  const [descExpanded, setDescExpanded] = useState(false)
 
   function startEditing() {
     setEditTitle(task.title)
     setEditDescription(task.description ?? '')
     setEditPriority(task.priority)
-    setEditDueDate(task.due_date ?? '')
+    setEditDueDate(toDatetimeLocal(task.due_date, task.created_at))
     setIsEditing(true)
   }
 
@@ -38,11 +55,13 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, disabled }:
 
   function saveEditing() {
     if (!editTitle.trim()) return
+    const normalized = editDueDate ? normalizeDatetimeLocal(editDueDate) : ''
+    const iso = normalized ? new Date(normalized).toISOString() : ''
     onEdit(task.id, {
       title: editTitle.trim(),
       description: editDescription.trim() || undefined,
       priority: editPriority,
-      due_date: editDueDate || undefined,
+      due_date: iso || undefined,
     })
     setIsEditing(false)
   }
@@ -50,24 +69,29 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, disabled }:
   const inputClass = "w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-blue-400"
   const selectClass = "w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:focus:border-blue-400"
 
+  const done = task.status === 'done' || task.completed === 1
+  const descLong = (task.description?.length ?? 0) > 120 || (task.description?.includes('\n') ?? false)
+
   return (
     <div
       className={`group flex items-start gap-3 rounded-lg border p-4 transition-all duration-200 hover:shadow-md ${
-        task.completed
+        done
           ? 'border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50'
           : 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800'
       }`}
     >
+      <span className={`mt-0.5 w-1 self-stretch shrink-0 rounded-full ${statusAccents[task.status] || statusAccents.pending}`} />
+
       <button
         onClick={() => onToggle(task.id, task.completed)}
         disabled={disabled || isEditing}
         className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
-          task.completed
+          done
             ? 'border-green-500 bg-green-500 dark:border-green-400 dark:bg-green-400'
             : 'border-zinc-300 hover:border-green-400 dark:border-zinc-600 dark:hover:border-green-500'
         }`}
       >
-        {task.completed ? (
+        {done ? (
           <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
@@ -103,7 +127,7 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, disabled }:
                 <option value="high">High</option>
               </select>
               <input
-                type="date"
+                type="datetime-local"
                 value={editDueDate}
                 onChange={(e) => setEditDueDate(e.target.value)}
                 className={inputClass}
@@ -128,33 +152,64 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, disabled }:
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <h3
-                className={`text-sm font-medium transition-all duration-200 ${
-                  task.completed ? 'text-zinc-400 line-through dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'
+                className={`min-w-0 flex-1 truncate text-sm font-semibold transition-all duration-200 ${
+                  done ? 'text-zinc-400 line-through dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'
                 }`}
+                title={task.title}
               >
                 {task.title}
               </h3>
+              <select
+                value={task.status}
+                onChange={(e) => onEdit(task.id, { status: e.target.value as Status })}
+                disabled={disabled}
+                aria-label="Task status"
+                className="shrink-0 rounded-md border border-zinc-200 bg-white px-1.5 py-0.5 text-xs font-medium text-zinc-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:focus:border-blue-400"
+              >
+                {Object.entries(statusLabels).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${priorityColors[task.priority] || priorityColors.medium}`}
+                className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${priorityColors[task.priority] || priorityColors.medium}`}
               >
                 {task.priority}
               </span>
             </div>
             {task.description && (
-              <p
-                className={`mt-1 text-sm ${
-                  task.completed ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-600 dark:text-zinc-400'
-                }`}
-              >
-                {task.description}
-              </p>
+              <div className="mt-1">
+                <p
+                  className={`text-sm ${
+                    done ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-600 dark:text-zinc-400'
+                  } ${descLong && !descExpanded ? 'line-clamp-2' : ''}`}
+                >
+                  {task.description}
+                </p>
+                {descLong && (
+                  <button
+                    type="button"
+                    onClick={() => setDescExpanded(!descExpanded)}
+                    className="mt-0.5 text-xs font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    {descExpanded ? 'Show less' : 'Show more'}
+                  </button>
+                )}
+              </div>
             )}
             {task.due_date && (
-              <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                Due: {new Date(task.due_date).toLocaleDateString()}
-              </p>
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+                <span>
+                  Due {parseDueDate(task.due_date, task.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+                {!done && (
+                  <>
+                    <span>·</span>
+                    <DueBadge dueDate={task.due_date} createdAt={task.created_at} />
+                  </>
+                )}
+              </div>
             )}
           </>
         )}

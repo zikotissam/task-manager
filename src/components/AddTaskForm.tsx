@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import type { Priority } from '@/types'
+import { normalizeDatetimeLocal } from '@/lib/dates'
 
 interface Props {
   onAdd: (title: string, description: string, priority: Priority, due_date: string) => void
@@ -18,7 +19,9 @@ export default function AddTaskForm({ onAdd, inputRef }: Props) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
-    onAdd(title.trim(), description.trim(), priority, dueDate)
+    const normalized = dueDate ? normalizeDatetimeLocal(dueDate) : ''
+    const iso = normalized ? new Date(normalized).toISOString() : ''
+    onAdd(title.trim(), description.trim(), priority, iso)
     setTitle('')
     setDescription('')
     setPriority('medium')
@@ -85,9 +88,9 @@ export default function AddTaskForm({ onAdd, inputRef }: Props) {
               </select>
             </div>
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Due date</label>
+              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Due date &amp; time</label>
               <input
-                type="date"
+                type="datetime-local"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:focus:border-blue-400"
